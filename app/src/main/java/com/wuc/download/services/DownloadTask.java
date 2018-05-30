@@ -2,20 +2,21 @@ package com.wuc.download.services;
 
 import android.content.Context;
 import android.content.Intent;
-import android.util.Log;
 
 import com.wuc.download.db.ThreadDAOImpl;
 import com.wuc.download.entities.FileInfo;
 import com.wuc.download.entities.ThreadInfo;
 
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -36,6 +37,7 @@ public class DownloadTask {
     private int mThreadCount = 1;
     //线程集合
     private List<DownloadThread> mDownloadThreads;
+    private Timer mTimer=new Timer();//定时器
 
     public DownloadTask(Context context, FileInfo fileInfo, int count) {
         mContext = context;
@@ -47,13 +49,12 @@ public class DownloadTask {
     public void download() {
         //读取数据库线程信息
         List<ThreadInfo> threadInfos = mThreadDAO.getThreads(mFileInfo.getUrl());
-        ThreadInfo threadInfo = null;
         if (threadInfos.size() == 0) {
             //获取每个线程下载的长度
             long len = mFileInfo.getLength() / mThreadCount;
             for (int i = 0; i < mThreadCount; i++) {
                 //初始化线程信息对象
-                threadInfo = new ThreadInfo(0, mFileInfo.getUrl(), i * len,
+                ThreadInfo threadInfo = new ThreadInfo(i, mFileInfo.getUrl(), i * len,
                         (i + 1) * len - 1, 0);
                 //最后个可能除不尽，设置为最大长度
                 if (i == mThreadCount - 1) {
@@ -72,6 +73,16 @@ public class DownloadTask {
             DownloadTask.sExecutorService.execute(thread);
             mDownloadThreads.add(thread);
         }
+        //启动定时器
+        mTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                Intent intent = new Intent(DownloadService.ACTION_UPDATE);
+                intent.putExtra("finished", mFinished * 100 / mFileInfo.getLength());
+                intent.putExtra("id", mFileInfo.getId());
+                mContext.sendBroadcast(intent);
+            }
+        },1000,1000);
     }
 
     /**
@@ -87,6 +98,8 @@ public class DownloadTask {
             }
         }
         if (isAllFinished) {
+            //取消定时器
+            mTimer.cancel();
             //删除线程信息
             mThreadDAO.deleteThread(mFileInfo.getUrl());
             //发送广播通知UI下载任务结束
@@ -108,7 +121,7 @@ public class DownloadTask {
         public void run() {
             super.run();
             HttpURLConnection conn = null;
-            BufferedInputStream input = null;
+            InputStream input = null;
             RandomAccessFile raf = null;
             try {
                 URL url = new URL(mThreadInfo.getUrl());
@@ -123,16 +136,14 @@ public class DownloadTask {
                 raf = new RandomAccessFile(file, "rwd");
                 //seek()方法，在读写的时候跳过设置好的字节数，从下一个字节数开始读写
                 raf.seek(start);
-                Intent intent = new Intent(DownloadService.ACTION_UPDATE);
                 mFinished += mThreadInfo.getFinished();
                 //开始下载
                 if (conn.getResponseCode() == HttpURLConnection.HTTP_OK
                         || conn.getResponseCode() == HttpURLConnection.HTTP_PARTIAL) {
                     //读取数据
-                    input = new BufferedInputStream(conn.getInputStream());
+                    input = conn.getInputStream();
                     byte[] buffer = new byte[1024 * 4];
                     int len = -1;
-                    long time = System.currentTimeMillis();
                     while ((len = input.read(buffer)) != -1) {
                         //写入文件
                         raf.write(buffer, 0, len);
@@ -140,13 +151,6 @@ public class DownloadTask {
                         mFinished += (long) len;
                         //累加每个线程完成的进度
                         mThreadInfo.setFinished(mThreadInfo.getFinished() + len);
-                        if (System.currentTimeMillis() - time > 1000) {
-                            time = System.currentTimeMillis();
-                            intent.putExtra("finished", (int) (mFinished * 100 / mFileInfo.getLength()));
-                            intent.putExtra("id", mFileInfo.getId());
-                            mContext.sendBroadcast(intent);
-                            Log.i("DownloadTask", "mFinished id==" + mFileInfo.getId() + ",mFinished==" + mFinished + ",percent==" + mFinished * 100 / mFileInfo.getLength());
-                        }
                         //在下载暂停时保存下载进度
                         if (isPause) {
                             //保存进度到数据库

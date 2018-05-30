@@ -77,7 +77,7 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.ViewHo
      * @param id
      * @param progress
      */
-    public void updateProgress(int id, int progress) {
+    public void updateProgress(int id, long progress) {
         FileInfo fileInfo = mFileList.get(id);
         fileInfo.setFinished(progress);
         //notifyDataSetChanged();

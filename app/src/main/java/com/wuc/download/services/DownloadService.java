@@ -44,9 +44,14 @@ public class DownloadService extends Service {
                     FileInfo fileInfo = (FileInfo) msg.obj;
                     Log.d("DownloadService", "init:" + fileInfo);
                     //启动下载任务
-                    DownloadTask task = new DownloadTask(DownloadService.this, fileInfo, 1);
+                    DownloadTask task = new DownloadTask(DownloadService.this, fileInfo, 3);
                     task.download();
                     mDownloadTasks.put(fileInfo.getId(), task);
+                    //发动启动命令的广播
+                    Intent intent=new Intent();
+                    intent.setAction(DownloadService.ACTION_START);
+                    intent.putExtra("fileInfo",fileInfo);
+                    sendBroadcast(intent);
                     break;
             }
         }

@@ -17,6 +17,7 @@ import android.widget.Toast;
 
 import com.wuc.download.entities.FileInfo;
 import com.wuc.download.services.DownloadService;
+import com.wuc.download.utils.NotificationUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,22 +34,29 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (DownloadService.ACTION_UPDATE.equals(intent.getAction())) {
-                int finished = intent.getIntExtra("finished", 0);
+                long finished = intent.getLongExtra("finished", 0);
                 int id = intent.getIntExtra("id", 0);
                 mAdapter.updateProgress(id, finished);
+                mNotificationUtils.updateNotification(id, (int) finished);
             } else if (DownloadService.ACTION_FINISH.equals(intent.getAction())) {
                 FileInfo fileInfo = intent.getParcelableExtra("fileInfo");
                 mAdapter.updateProgress(fileInfo.getId(), 0);
+                mNotificationUtils.cancelNotification(fileInfo.getId());
                 Toast.makeText(MainActivity.this, mFileList.get(fileInfo.getId()).getFileName() + "下载完毕", Toast.LENGTH_LONG).show();
+            }else if (DownloadService.ACTION_START.equals(intent.getAction())) {
+                FileInfo fileInfo = intent.getParcelableExtra("fileInfo");
+                mNotificationUtils.showNotification(fileInfo);
             }
         }
     };
+    private NotificationUtils mNotificationUtils;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         recyclerView = findViewById(R.id.recyclerView);
+        mNotificationUtils = new NotificationUtils(this);
 
         mFileList = new ArrayList<>();
         FileInfo fileInfo = new FileInfo(0, "http://xlc.qxgs.net/api/pc/image/download/sp",
@@ -80,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(DownloadService.ACTION_UPDATE);
         intentFilter.addAction(DownloadService.ACTION_FINISH);
+        intentFilter.addAction(DownloadService.ACTION_START);
         registerReceiver(mReceiver, intentFilter);
     }
 
