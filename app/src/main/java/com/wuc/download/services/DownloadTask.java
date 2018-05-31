@@ -1,7 +1,9 @@
 package com.wuc.download.services;
 
 import android.content.Context;
-import android.content.Intent;
+import android.os.Message;
+import android.os.Messenger;
+import android.os.RemoteException;
 
 import com.wuc.download.db.ThreadDAOImpl;
 import com.wuc.download.entities.FileInfo;
@@ -37,10 +39,12 @@ public class DownloadTask {
     private int mThreadCount = 1;
     //线程集合
     private List<DownloadThread> mDownloadThreads;
-    private Timer mTimer=new Timer();//定时器
+    private Timer mTimer = new Timer();//定时器
+    private Messenger mMessenger = null;
 
-    public DownloadTask(Context context, FileInfo fileInfo, int count) {
+    public DownloadTask(Context context, Messenger messenger, FileInfo fileInfo, int count) {
         mContext = context;
+        mMessenger = messenger;
         mFileInfo = fileInfo;
         mThreadCount = count;
         mThreadDAO = new ThreadDAOImpl(context);
@@ -77,12 +81,21 @@ public class DownloadTask {
         mTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                Intent intent = new Intent(DownloadService.ACTION_UPDATE);
-                intent.putExtra("finished", mFinished * 100 / mFileInfo.getLength());
-                intent.putExtra("id", mFileInfo.getId());
-                mContext.sendBroadcast(intent);
+//                Intent intent = new Intent(DownloadService.ACTION_UPDATE);
+//                intent.putExtra("finished", mFinished * 100 / mFileInfo.getLength());
+//                intent.putExtra("id", mFileInfo.getId());
+//                mContext.sendBroadcast(intent);
+                Message message=Message.obtain();
+                message.what=DownloadService.MSG_UPDATE;
+                message.arg1= (int) (mFinished * 100 / mFileInfo.getLength());
+                message.arg2=mFileInfo.getId();
+                try {
+                    mMessenger.send(message);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
             }
-        },1000,1000);
+        }, 1000, 1000);
     }
 
     /**
@@ -103,9 +116,17 @@ public class DownloadTask {
             //删除线程信息
             mThreadDAO.deleteThread(mFileInfo.getUrl());
             //发送广播通知UI下载任务结束
-            Intent intent = new Intent(DownloadService.ACTION_FINISH);
-            intent.putExtra("fileInfo", mFileInfo);
-            mContext.sendBroadcast(intent);
+//            Intent intent = new Intent(DownloadService.ACTION_FINISH);
+//            intent.putExtra("fileInfo", mFileInfo);
+//            mContext.sendBroadcast(intent);
+            Message message=Message.obtain();
+            message.what=DownloadService.MSG_FINISH;
+            message.obj=mFileInfo;
+            try {
+                mMessenger.send(message);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
         }
     }
 

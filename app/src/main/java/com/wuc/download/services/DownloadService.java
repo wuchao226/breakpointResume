@@ -7,6 +7,8 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.Messenger;
+import android.os.RemoteException;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
@@ -31,8 +33,15 @@ public class DownloadService extends Service {
     public static final String ACTION_STOP = "ACTION_STOP";
     public static final String ACTION_UPDATE = "ACTION_UPDATE";
     public static final String ACTION_FINISH = "ACTION_FINISH";
-    public static final int MSG_INIT = 0;
+    public static final int MSG_INIT = 0x01;
+    //绑定标识
+    public static final int MSG_BINDER = 0x02;
+    public static final int MSG_START = 0x03;
+    public static final int MSG_STOP = 0x04;
+    public static final int MSG_UPDATE = 0x05;
+    public static final int MSG_FINISH = 0x06;
     public static final String DOWNLOAD_PATH = Environment.getExternalStorageDirectory().getAbsolutePath() + "/download/";
+    private Messenger mMessengerActivity;//Activity中的Messenger
     private Map<Integer, DownloadTask> mDownloadTasks = new LinkedHashMap<>();
     @SuppressLint("HandlerLeak")
     Handler mHandler = new Handler() {
@@ -44,15 +53,40 @@ public class DownloadService extends Service {
                     FileInfo fileInfo = (FileInfo) msg.obj;
                     Log.d("DownloadService", "init:" + fileInfo);
                     //启动下载任务
-                    DownloadTask task = new DownloadTask(DownloadService.this, fileInfo, 3);
+                    DownloadTask task = new DownloadTask(DownloadService.this, mMessengerActivity, fileInfo, 3);
                     task.download();
                     mDownloadTasks.put(fileInfo.getId(), task);
                     //发动启动命令的广播
-                    Intent intent=new Intent();
-                    intent.setAction(DownloadService.ACTION_START);
-                    intent.putExtra("fileInfo",fileInfo);
-                    sendBroadcast(intent);
+//                    Intent intent = new Intent();
+//                    intent.setAction(DownloadService.ACTION_START);
+//                    intent.putExtra("fileInfo", fileInfo);
+//                    sendBroadcast(intent);
+                    Message message = Message.obtain();
+                    message.what = DownloadService.MSG_START;
+                    message.obj = fileInfo;
+                    try {
+                        mMessengerActivity.send(message);
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
                     break;
+                case MSG_BINDER:
+                    //处理绑定的Messenger
+                    mMessengerActivity = msg.replyTo;
+                    break;
+                case MSG_START:
+                    FileInfo fileInfo1 = (FileInfo) msg.obj;
+                    InitThread initThread = new InitThread(fileInfo1);
+                    DownloadTask.sExecutorService.execute(initThread);
+                    break;
+                case MSG_STOP:
+                    FileInfo fileInfo2 = (FileInfo) msg.obj;
+                    DownloadTask task2 = mDownloadTasks.get(fileInfo2.getId());
+                    if (task2 != null) {
+                        task2.isPause = true;
+                    }
+                    break;
+
             }
         }
     };
@@ -60,17 +94,17 @@ public class DownloadService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (ACTION_START.equals(intent.getAction())) {
-            FileInfo fileInfo = intent.getParcelableExtra("fileInfo");
-            Log.d("DownloadService", "start：" + fileInfo);
-            InitThread initThread = new InitThread(fileInfo);
-            DownloadTask.sExecutorService.execute(initThread);
+//            FileInfo fileInfo = intent.getParcelableExtra("fileInfo");
+//            Log.d("DownloadService", "start：" + fileInfo);
+//            InitThread initThread = new InitThread(fileInfo);
+//            DownloadTask.sExecutorService.execute(initThread);
         } else if (ACTION_STOP.equals(intent.getAction())) {
-            FileInfo fileInfo = intent.getParcelableExtra("fileInfo");
-            Log.d("DownloadService", "stop：" + fileInfo);
-            DownloadTask task = mDownloadTasks.get(fileInfo.getId());
-            if (task != null) {
-                task.isPause = true;
-            }
+//            FileInfo fileInfo = intent.getParcelableExtra("fileInfo");
+//            Log.d("DownloadService", "stop：" + fileInfo);
+//            DownloadTask task = mDownloadTasks.get(fileInfo.getId());
+//            if (task != null) {
+//                task.isPause = true;
+//            }
         }
         return super.onStartCommand(intent, flags, startId);
     }
@@ -78,7 +112,10 @@ public class DownloadService extends Service {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        //创建一个Messenger对象包含Handler的引用
+        Messenger messenger = new Messenger(mHandler);
+        //返回Messenger的Binder
+        return messenger.getBinder();
     }
 
     class InitThread extends Thread {

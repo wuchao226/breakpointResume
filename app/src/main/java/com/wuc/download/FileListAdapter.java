@@ -2,7 +2,9 @@ package com.wuc.download;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.Intent;
+import android.os.Message;
+import android.os.Messenger;
+import android.os.RemoteException;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.AppCompatButton;
 import android.support.v7.widget.AppCompatTextView;
@@ -26,10 +28,15 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.ViewHo
 
     private Context mContext;
     private List<FileInfo> mFileList;
+    private Messenger mMessenger;
 
     public FileListAdapter(Context context, List<FileInfo> fileList) {
         mContext = context;
         mFileList = fileList;
+    }
+
+    public void setMessenger(Messenger messenger) {
+        mMessenger = messenger;
     }
 
     @NonNull
@@ -49,19 +56,35 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.ViewHo
         holder.mBtn_start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(mContext, DownloadService.class);
-                intent.setAction(DownloadService.ACTION_START);
-                intent.putExtra("fileInfo", fileInfo);
-                mContext.startService(intent);
+//                Intent intent = new Intent(mContext, DownloadService.class);
+//                intent.setAction(DownloadService.ACTION_START);
+//                intent.putExtra("fileInfo", fileInfo);
+//                mContext.startService(intent);
+                Message message = Message.obtain();
+                message.what = DownloadService.MSG_START;
+                message.obj = fileInfo;
+                try {
+                    mMessenger.send(message);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
             }
         });
         holder.mBtn_stop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(mContext, DownloadService.class);
-                intent.setAction(DownloadService.ACTION_STOP);
-                intent.putExtra("fileInfo", fileInfo);
-                mContext.startService(intent);
+//                Intent intent = new Intent(mContext, DownloadService.class);
+//                intent.setAction(DownloadService.ACTION_STOP);
+//                intent.putExtra("fileInfo", fileInfo);
+//                mContext.startService(intent);
+                Message message = Message.obtain();
+                message.what = DownloadService.MSG_STOP;
+                message.obj = fileInfo;
+                try {
+                    mMessenger.send(message);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
             }
         });
     }
