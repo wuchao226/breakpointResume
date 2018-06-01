@@ -107,9 +107,9 @@ public class NotificationUtils extends ContextWrapper {
             //点击通知栏
             Intent intent = new Intent(mContext, MainActivity.class);
             PendingIntent pendingIntent = PendingIntent.getActivity(mContext, 0, intent, 0);
-            notification.setContentIntent(pendingIntent);
             // notification.contentIntent = pendingIntent;
             RemoteViews remoteViews = new RemoteViews(mContext.getPackageName(), R.layout.notification);
+            notification.setContentIntent(pendingIntent);
             remoteViews.setTextViewText(R.id.txt_fileName, fileInfo.getFileName());
             //设置开始按钮操作
             Intent intentStart = new Intent(mContext, DownloadService.class);

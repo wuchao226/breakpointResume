@@ -43,17 +43,21 @@ public class DownloadService extends Service {
     public static final String DOWNLOAD_PATH = Environment.getExternalStorageDirectory().getAbsolutePath() + "/download/";
     private Messenger mMessengerActivity;//Activity中的Messenger
     private Map<Integer, DownloadTask> mDownloadTasks = new LinkedHashMap<>();
+    private InitThread mInitThread;
     @SuppressLint("HandlerLeak")
+    final
     Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
+            FileInfo fileInfo = null;
+            DownloadTask task = null;
             switch (msg.what) {
                 case MSG_INIT:
-                    FileInfo fileInfo = (FileInfo) msg.obj;
+                    fileInfo = (FileInfo) msg.obj;
                     Log.d("DownloadService", "init:" + fileInfo);
                     //启动下载任务
-                    DownloadTask task = new DownloadTask(DownloadService.this, mMessengerActivity, fileInfo, 3);
+                    task = new DownloadTask(DownloadService.this, mMessengerActivity, fileInfo, 3);
                     task.download();
                     mDownloadTasks.put(fileInfo.getId(), task);
                     //发动启动命令的广播
@@ -75,15 +79,15 @@ public class DownloadService extends Service {
                     mMessengerActivity = msg.replyTo;
                     break;
                 case MSG_START:
-                    FileInfo fileInfo1 = (FileInfo) msg.obj;
-                    InitThread initThread = new InitThread(fileInfo1);
-                    DownloadTask.sExecutorService.execute(initThread);
+                    fileInfo = (FileInfo) msg.obj;
+                    mInitThread = new InitThread(fileInfo);
+                    DownloadTask.sExecutorService.execute(mInitThread);
                     break;
                 case MSG_STOP:
-                    FileInfo fileInfo2 = (FileInfo) msg.obj;
-                    DownloadTask task2 = mDownloadTasks.get(fileInfo2.getId());
-                    if (task2 != null) {
-                        task2.isPause = true;
+                    fileInfo = (FileInfo) msg.obj;
+                    task = mDownloadTasks.get(fileInfo.getId());
+                    if (task != null) {
+                        task.isPause = true;
                     }
                     break;
 

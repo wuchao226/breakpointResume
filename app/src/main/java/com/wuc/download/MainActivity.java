@@ -55,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
                         + "下载完毕", Toast.LENGTH_LONG).show();
             } else if (DownloadService.ACTION_START.equals(intent.getAction())) {
                 FileInfo fileInfo = intent.getParcelableExtra("fileInfo");
-                mNotificationUtils.showNotification(fileInfo);
+               // mNotificationUtils.showNotification(fileInfo);
             }
         }
     };
@@ -64,13 +64,14 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void dispatchMessage(Message msg) {
             super.dispatchMessage(msg);
+            FileInfo fileInfo;
             switch (msg.what) {
                 case DownloadService.MSG_START:
-                    FileInfo fileInfo1 = (FileInfo) msg.obj;
-                    mNotificationUtils.showNotification(fileInfo1);
+                    fileInfo = (FileInfo) msg.obj;
+                    mNotificationUtils.showNotification(fileInfo);
                     break;
                 case DownloadService.MSG_FINISH:
-                    FileInfo fileInfo = (FileInfo) msg.obj;
+                    fileInfo = (FileInfo) msg.obj;
                     mAdapter.updateProgress(fileInfo.getId(), 0);
                     mNotificationUtils.cancelNotification(fileInfo.getId());
                     Toast.makeText(MainActivity.this, mFileList.get(fileInfo.getId()).getFileName()
@@ -82,9 +83,6 @@ public class MainActivity extends AppCompatActivity {
                     mAdapter.updateProgress(id, finished);
                     mNotificationUtils.updateNotification(id, finished);
                     break;
-                case DownloadService.MSG_STOP:
-                    break;
-
             }
         }
     };

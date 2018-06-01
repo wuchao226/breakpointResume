@@ -85,10 +85,10 @@ public class DownloadTask {
 //                intent.putExtra("finished", mFinished * 100 / mFileInfo.getLength());
 //                intent.putExtra("id", mFileInfo.getId());
 //                mContext.sendBroadcast(intent);
-                Message message=Message.obtain();
-                message.what=DownloadService.MSG_UPDATE;
-                message.arg1= (int) (mFinished * 100 / mFileInfo.getLength());
-                message.arg2=mFileInfo.getId();
+                Message message = Message.obtain();
+                message.what = DownloadService.MSG_UPDATE;
+                message.arg1 = (int) (mFinished * 100 / mFileInfo.getLength());
+                message.arg2 = mFileInfo.getId();
                 try {
                     mMessenger.send(message);
                 } catch (RemoteException e) {
@@ -119,9 +119,9 @@ public class DownloadTask {
 //            Intent intent = new Intent(DownloadService.ACTION_FINISH);
 //            intent.putExtra("fileInfo", mFileInfo);
 //            mContext.sendBroadcast(intent);
-            Message message=Message.obtain();
-            message.what=DownloadService.MSG_FINISH;
-            message.obj=mFileInfo;
+            Message message = Message.obtain();
+            message.what = DownloadService.MSG_FINISH;
+            message.obj = mFileInfo;
             try {
                 mMessenger.send(message);
             } catch (RemoteException e) {
