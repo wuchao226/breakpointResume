@@ -2,6 +2,8 @@
 Android Service-多线程断点续传下载
 1. 使用BroadcastReceiver和Handler实现Activity和Service的通信
 2. 使用Messenger传递Handler
+3. Http协议字段 Range "bytes="+start+"-"+end
+4. RandomAccessFile 设置吸入位置
 ### Handler实现Activity和Service的通信
 - 使用Messenger实现跨进程通信
 - Messenger包含Handler的引用
